@@ -1,0 +1,14 @@
+services:
+  brewery-airflow:
+    image: brewerydatapipeline:latest
+
+    environment: 
+      AIRFLOW__API_AUTH__JWT_SECRET: 'some-key'
+
+    volumes:
+      - ./airflow:/opt/airflow
+
+    ports:
+      - "8080:8080"
+
+    command: airflow standalone
