@@ -6,9 +6,9 @@ from airflow.operators.python import PythonOperator
 import json
 import pandas as pd
 
-bronze_layer_json_path = '/opt/airflow/bronze_layer_data.json'
-silver_layer_parquet_path = '/opt/airflow/silver_layer_data.parquet'
-gold_layer_parquet_path = '/opt/airflow/gold_layer_data.parquet'
+bronze_layer_json_path = '/opt/airflow/db/bronze_layer_data.json'
+silver_layer_parquet_path = '/opt/airflow/db/silver_layer_data.parquet'
+gold_layer_parquet_path = '/opt/airflow/db/gold_layer_data.parquet'
 
 def read_json(json_path): 
       with open(json_path, 'r') as file:
@@ -22,13 +22,15 @@ def save_raw_data(task_instance):
 
 def first_transformation_data(task_instance):
         data = read_json(bronze_layer_json_path)
-        df = pd.DataFrame(data[0][0]).drop_duplicates()
+        df = pd.DataFrame(data[0][0])
         df.to_parquet(path=silver_layer_parquet_path, partition_cols=['city'])
                  
 def gold_layer_transformation(task_instance):
-        df = pd.read_parquet(silver_layer_parquet_path)
+        df = pd.read_parquet(silver_layer_parquet_path).drop_duplicates()
         grouped_df = df.groupby(['city', 'brewery_type']).count()
-        grouped_df.to_parquet(path=gold_layer_parquet_path)
+        filter_df = grouped_df[grouped_df["id"] > 0]
+        final_df = filter_df.iloc[:, 0:1].rename(columns={'id': 'count'})
+        final_df.to_parquet(path=gold_layer_parquet_path)
 
 default_args = {
     'owner': 'airflow',
